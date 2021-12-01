@@ -1,0 +1,473 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Get started with the Directions API</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <!-- Import Mapbox GL JS  -->
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.3.2/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.3.2/mapbox-gl.css' rel='stylesheet' />
+    <!-- Import Mapbox Geocoder -->
+    <script
+        src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js'></script>
+    <link rel='stylesheet'
+        href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.css'
+        type='text/css' />
+    <!-- Import Assembly -->
+    <link href='https://api.mapbox.com/mapbox-assembly/v0.23.2/assembly.min.css' rel='stylesheet'>
+    <script src='https://api.mapbox.com/mapbox-assembly/v0.23.2/assembly.js'> </script>
+    <!-- Import jQuery -->
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        /*    #directions-json-response {
+      width: 100vw;
+    }*/
+        pre {
+            display: block;
+            font-family: monospace;
+            white-space: pre;
+            text-align: left;
+        }
+        #route-gradient {
+            id: 'route-gradient';
+            height: 10px;
+            background: linear-gradient(to right, #FDBBEF 0%, #8C00D7 100%)
+        }
+    </style>
+    <script src='https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v3.0.11/turf.min.js'></script>
+    <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.js'></script>
+    <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css'
+        type='text/css' />
+    <pre id='coordinates' class='coordinates'></pre>
+
+    <!-- Import require.js and project folder-->
+    <script src="require.js"></script>
+
+</head>
+<body>
+    <!-- Create a container for the map -->
+    <div id='map'></div>
+    <!-- Create a sidebar with buttons for each option -->
+    <div class='absolute fl my24 mx24 py24 px24 bg-gray-faint round'>
+        <h1 class='txt-m txt-bold'>Directions Playground Beta</h1>
+        1. Click the button in the upper right corner <br>
+        2. Add points to the map that you want to map match <br>
+        3. Click on the last point when finished <br>
+        4. The route will display a soft gradient from the first to the last point <br>
+        5. Click on the travel mode for a different results (note, most routes won't vary)
+        <div id='route-gradient'></div>
+        <br><br>
+        <form id='params', method="POST">
+            <h4 class='txt-m txt-bold mb6'>Chose a travel mode:</h4>
+            <div class='mb12 mr12 toggle-group align-center'>
+                <label class='toggle-container'>
+                    <input name='profile' type='radio' value='walking'>
+                    <div class='toggle toggle--active-null toggle--null'>Walking</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='profile' type='radio' value='cycling' checked>
+                    <div class='toggle toggle--active-null toggle--null'>Cycling</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='profile' type='radio' value='driving'>
+                    <div class='toggle toggle--active-null toggle--null'>Driving</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='profile' type='radio' value='driving-traffic'>
+                    <div class='toggle toggle--active-null toggle--null'>Driving with Traffic</div>
+                </label>
+            </div>
+            <h4 class='txt-m txt-bold mb6'>Overview:</h4>
+            <div class='mb12 mr12 toggle-group align-center'>
+                <label class='toggle-container'>
+                    <input name='overview' type='radio' value='full'>
+                    <div class='toggle toggle--active-null toggle--null'>Full</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='overview' type='radio' value='simplified' checked>
+                    <div class='toggle toggle--active-null toggle--null'>Simplified</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='overview' type='radio' value='false'>
+                    <div class='toggle toggle--active-null toggle--null'>None</div>
+                </label>
+            </div>
+            <h4 class='txt-m txt-bold mb6'>Annotations:</h4>
+            <div class='mb12 mr12 toggle-group align-center'>
+                <label class='toggle-container'>
+                    <input name='annotations' type='radio' value='none' checked>
+                    <div class='toggle toggle--active-null toggle--null'>None</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='annotations' type='radio' value='duration'>
+                    <div class='toggle toggle--active-null toggle--null'>Duration</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='annotations' type='radio' value='distance'>
+                    <div class='toggle toggle--active-null toggle--null'>Distance</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='annotations' type='radio' value='speed'>
+                    <div class='toggle toggle--active-null toggle--null'>Speed</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='annotations' type='radio' value='congestion'>
+                    <div class='toggle toggle--active-null toggle--null'>Congestion</div>
+                </label>
+            </div>
+            <h4 class='txt-m txt-bold mb6'>Geometries:</h4>
+            <div class='mb12 mr12 toggle-group align-center'>
+                <label class='toggle-container'>
+                    <input name='geometries' type='radio' value='geojson' checked>
+                    <div class='toggle toggle--active-null toggle--null'>GeoJSON</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='geometries' type='radio' value='polyline'>
+                    <div class='toggle toggle--active-null toggle--null'>Polyline</div>
+                </label>
+                <label class='toggle-container'>
+                    <input name='geometries' type='radio' value='polyline6'>
+                    <div class='toggle toggle--active-null toggle--null'>Polyline6</div>
+                </label>
+            </div>
+            <!-- <h4 class='txt-m txt-bold mb6'>Radiuses:</h4>
+            <div class="slidecontainer">
+                <input type="range" min="0" max="500" step="5" value="10" class="slider" id="radiusesRange" style="width:500px">
+            </div> -->
+            <h4 class='txt-m txt-bold mb6'>JSON API Call:</h4>
+            <div class='mb12 mr12 toggle-group align-center'>
+                <label class='toggle-container' style="overflow-y: scroll; width:500px">
+                    <div id='directions-api-call'></div>
+                </label>
+            </div>
+            <h4 class='txt-m txt-bold mb6'>JSON Response:</h4>
+            <div class='mb12 mr12 toggle-group align-center'>
+                <label class='toggle-container' style="overflow-y: scroll; height:400px; width:500px">
+                    <div id='directions-json-response'></div>
+                </label>
+        </form>
+    </div>
+    <script>
+        var lat = 33.8830;
+        var lng = -117.8851;
+        var lngLat = {
+            lng: lng,
+            lat: lat
+        };
+        //var rawCoordinates = []
+        var stringCoordinates = ''
+        mapboxgl.accessToken = 'pk.eyJ1IjoiaHZlbnRheWVuIiwiYSI6ImNrbzE1MTBuZzA2Y3MydXFoc3RrdWtmNDYifQ.x6rbgWC9a0lnI0WxkOVdow';
+        var map = new mapboxgl.Map({
+            container: 'map', // Specify the container ID
+            style: 'mapbox://styles/mapbox/streets-v11', // Specify which map style to use
+            center: [lng, lat], // Specify the starting position
+            zoom: 15.7, // Specify the starting zoom
+        });
+
+        var draw = new MapboxDraw({
+            displayControlsDefault: false,
+            controls: {
+                //point: true
+                line_string: true,
+                //trash: true
+            }
+        });
+        map.addControl(draw);
+        map.on('draw.create', updateLine);
+        map.on('draw.delete', updateLine);
+        map.on('draw.update', updateLine);
+        // function getCoordinates(e) {
+        //     var data = draw.getAll();
+        //     console.log(data)
+        // }
+        function removeData(e) {
+            console.log("deleting")
+        }
+        /*
+        // basic geolocation, gives you a button to press
+        map.addControl(
+            new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                trackUserLocation: true
+            })
+        );
+            */
+        // Initiates geolocation API
+        const geolocate = new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true
+            },
+            trackUserLocation: true
+        })
+        map.addControl(geolocate);
+        map.on('load', function() {
+        // When the map loads, add the source and layer
+        map.addSource('directions-line', {
+            type: 'geojson',
+            lineMetrics: true,
+            data: {
+                "type": 'FeatureCollection',
+                "features": []
+            }
+        });
+        map.addSource('rawPoints', {
+            type: 'geojson',
+            data: {
+                "type": 'FeatureCollection',
+                "features": []
+            }
+        });
+
+        map.addLayer({
+            'id': 'raw-points',
+            'type': 'circle',
+            // Use "iso" as the data source for this layer
+            'source': 'rawPoints',
+            'layout': {},
+            'paint': {
+                // The fill color for the layer is set to a light purple
+                'circle-color': '#F5F2FF',
+                'circle-opacity': 0.8,
+                'circle-stroke-color': '#6313E4',
+                'circle-stroke-width': 2
+            }
+        }, "road-label");
+        map.addLayer({
+            'id': 'directions-line-core',
+            'type': 'line',
+            // Use "iso" as the data source for this layer
+            'source': 'directions-line',
+            'layout': {
+                'line-cap': "round"
+            },
+            'paint': {
+                // The fill color for the layer is set to a light purple
+                'line-color': '#FED6F5',
+                'line-width': [
+                    "interpolate",
+                    ["exponential", 1.5],
+                    ["zoom"],
+                    12,
+                    3,
+                    14,
+                    5,
+                    18,
+                    16
+                ],
+                'line-opacity': 1,
+                'line-gradient': [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0, "#FDBBEF",
+                    1, "#8C00D7"
+                ]
+            }
+        }, "raw-points");
+        map.addLayer({
+            'id': 'directions-line-casing',
+            'type': 'line',
+            // Use "iso" as the data source for this layer
+            'source': 'directions-line',
+            'layout': {
+                'line-cap': "round"
+            },
+            'paint': {
+                // The fill color for the layer is set to a light purple
+                'line-color': '#8C00D7',
+                'line-width': [
+                    "interpolate",
+                    ["exponential", 1.5],
+                    ["zoom"],
+                    12,
+                    0.5,
+                    14,
+                    2,
+                    18,
+                    18
+                ],
+                'line-opacity': 1
+            }
+        }, "directions-line-core");
+
+        //Geolocation triggers when map first loads
+        geolocate.trigger();
+
+
+
+        // Initialize the marker at the query coordinates
+        //marker.setLngLat(lngLat).addTo(map);
+        // Make the API call
+    });
+        function updateLine(e) {
+            map.getSource('rawPoints').setData({});
+            var rawCoordinates = draw.getAll();
+            draw.deleteAll();
+            stringCoordinates = ''
+            stringRadiuses = ''
+            console.log("rawCoordinates" + rawCoordinates.features[0].geometry)
+            if (rawCoordinates.features.length > 0) {
+                for (coordinatesIndex in rawCoordinates.features[0].geometry.coordinates) {
+                    var pointCoordinates = rawCoordinates.features[0].geometry.coordinates[coordinatesIndex]
+                    //console.log(data.features[0].geometry.coordinates[coordinatesIndex])
+                    stringCoordinates += pointCoordinates + ';'
+                    //console.log(stringCoordinates)
+                    //stringRadiuses += radiuses
+                }
+                //tringCoordinates += 'radiuses=' + stringRadiuses
+                // Removing the last semicolon which is not needed to construct the API request
+                stringCoordinates = stringCoordinates.substring(0, stringCoordinates.length - 1);
+                map.getSource('rawPoints').setData(rawCoordinates.features[0].geometry);
+                getDirections(stringCoordinates)
+            } else {
+                if (e.type !== 'draw.delete') alert("Use the draw tools to draw a polygon!");
+            }
+        }
+        // Create variables to use in getIso()
+        var urlBase = 'https://api.mapbox.com/directions/v5/mapbox';
+        https://api.mapbox.com/directions/v5/mapbox/cycling/-122.42,37.78;-77.03,38.91?access_token=pk.eyJ1IjoiZWFsZXNzYW5kcmluaSIsImEiOiJjajNjMWg1ankwMDBpMzJta2p2aGd5YWNtIn0.KVzrBvg0edGdM3v3hA_DtQ
+        var profile = 'driving';
+        var overview = 'simplified'
+        var annotations = 'none'
+        var geometries = 'geojson'
+        var radiuses = '10'
+        var token = 'pk.eyJ1IjoiaHZlbnRheWVuIiwiYSI6ImNrbzE1MTBuZzA2Y3MydXFoc3RrdWtmNDYifQ.x6rbgWC9a0lnI0WxkOVdow'
+        // Create a function that sets up the directions API query then makes an Ajax call
+        function getDirections(rawCoordinates) {
+            var publicQuery = urlBase + '/' + profile + '/' + rawCoordinates + '?geometries=geojson&overview=' + overview + '&annotations=' + annotations + '&access_token=INSERT_YOUR_MAPBOX_TOKEN_HERE'
+            var query = urlBase + '/' + profile + '/' + rawCoordinates + '?geometries=' + geometries + '&overview=' + overview + '&access_token=' + token
+            if (overview == 'full' && annotations != 'none') {
+                query += '&annotations=' + annotations
+            }
+            var directionsApiCallView = document.getElementById("directions-api-call")
+            directionsApiCallView.innerHTML = "<pre><code>" + publicQuery + "</code></pre>"
+            console.log("query", query)
+            $.ajax({
+                method: 'GET',
+                url: query
+            }).done(function (responseData) {
+                // Set the 'directions-line' source's data to what's returned by the API query
+                console.log("response" + responseData.routes[0].geometry)
+                console.log(JSON.stringify(responseData.routes[0].geometry))
+                // map.getSource('directions-line').setData('')
+                map.getSource('directions-line').setData(responseData.routes[0].geometry);
+                // console.log(JSON.stringify(data, undefined, 2))
+                var directionsJsonView = document.getElementById("directions-json-response")
+                directionsJsonView.innerHTML = "<pre><code>" + JSON.stringify(responseData, null, 6) +
+                    "</code></pre>"
+                //rdirectionsJsonView.scrollIntoView();
+            })
+        };
+
+var params = document.getElementById('params');
+    // When a user changes the value of profile or duration by clicking a button, change the parameter's value and make the API query again
+    params.addEventListener('change', function(e) {
+        if (stringCoordinates.length == 0) {
+            return
+        }
+        if (e.target.name === 'profile') {
+            profile = e.target.value;
+            getDirections(stringCoordinates)
+        } else if (e.target.name === 'duration') {
+            minutes = e.target.value;
+            getDirections(stringCoordinates)
+        } else if (e.target.name === 'directions-style') {
+            polygonStyle = e.target.value;
+            //console.log(polygonStyle)
+            getDirections(stringCoordinates)
+        }  else if (e.target.name === 'overview') {
+            //polygonStyle = e.target.value;
+            overview = e.target.value;
+            //console.log(e.target.value)
+            getDirections(stringCoordinates)
+        } else if (e.target.name === 'annotations') {
+            //polygonStyle = e.target.value;
+            annotations = e.target.value;
+            //console.log(e.target.value)
+            getDirections(stringCoordinates)
+        } else if (e.target.name === 'geometries') {
+            //polygonStyle = e.target.value;
+            geometries = e.target.value;
+            //console.log(e.target.value)
+            getDirections(stringCoordinates)
+        }
+    });
+    geolocate.on('geolocate', function(){
+
+//Get the updated user location, this returns a javascript object.
+var userlocation = geolocate._lastKnownPosition;
+
+//Your work here - Get coordinates like so
+var lat = userlocation.coords.latitude;
+var lng = userlocation.coords.longitude;
+var latitude_ = JSON.stringify(userlocation.coords.latitude);
+var longitude_ = JSON.stringify(userlocation.coords.longitude);
+
+//GEOLOCATION OUTPUT
+console.log(latitude_)
+console.log(longitude_)
+
+function ajax_post(){
+    $.ajax({ 
+        //http://127.0.0.1:8080/database.php                                    
+      url: 'http://127.0.0.1:8080/server.js',
+      type:'POST',
+      //crossDomain: true,                       
+      data: {latitude_ ,longitude_},                                                      
+      dataType: "json",           
+      success: function(data) {
+            //var ret = jQuery.parseJSON(data);
+            //data = ret
+          console.log("Successfull Post")
+      }, 
+      complete:function(jqXHR){
+            console.log("Ajax completed!")
+            console.log("   ...Code:", jqXHR.status)
+        }
+    });
+}//End of Ajax post
+ajax_post()
+
+});// End of on geolocate
+
+
+function ajax_req(){
+    console.log("Ajax call begining.")
+    $.ajax({ 
+        //http://127.0.0.1:8080/database.php                                    
+      url: 'http://127.0.0.1:8080/server.js',
+      type:'GET',
+      //crossDomain: true,                       
+      //data: "",                                                      
+      dataType: 'text',            
+      success: function(data) {
+        console.log("Succesfully Get.");
+        //var obj=JSON.parse(response);
+        //var result= $.parseJSON(data);   
+        console.log(data);  
+      },
+      complete:function(jqXHR){
+            console.log("Ajax completed!")
+            console.log("   ...Code:", jqXHR.status)
+        }
+   });   
+}
+ajax_req()
+
+
+</script>
+</body>
+</html>
